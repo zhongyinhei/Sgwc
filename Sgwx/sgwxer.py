@@ -1,7 +1,9 @@
 from .official_account import OfficialAccount
+from requests import Session, utils
+from tempfile import TemporaryFile
 from .article import Article
-from requests import Session
 from lxml import html
+from PIL import Image
 
 
 class Sgwxer:
@@ -13,7 +15,7 @@ class Sgwxer:
         xpath = '//*[@class="news-list"]/li'
         articles = []
         for search_url in search_urls:
-            html_tree = self.get_html(search_url)
+            html_tree = self._get_html(search_url)
             article_nodes = html_tree.xpath(xpath)
             for article_node in article_nodes:
                 article_url = article_node.xpath('./div[2]/h3/a/@href')[0]
@@ -24,7 +26,7 @@ class Sgwxer:
 
     def search_official_account(self, wechat_id):
         search_url = f'http://weixin.sogou.com/weixin?type=1&query={wechat_id}'
-        html_tree = self.get_html(search_url)
+        html_tree = self._get_html(search_url)
         xpath = '//*[@id="main"]/div[4]/ul/li[1]/div/div[2]/p[1]/a/@href'
         official_account = html_tree.xpath(xpath)
         if official_account:
@@ -32,5 +34,36 @@ class Sgwxer:
         else:
             return None
 
-    def get_html(self, url):
-        return html.document_fromstring(self._session.get(url).text)
+    def _get_html(self, url):
+        resp = self._session.get(url)
+        if url == resp.url:
+            return html.document_fromstring(resp.text)
+        else:
+            cookies = utils.dict_from_cookiejar(self._session.cookies)
+            snuid = self._identify_captcha()
+            cookies['SNUID'] = snuid
+            cookies['SUV'] = snuid
+            self._session.cookies = utils.cookiejar_from_dict(cookies)
+            return self._get_html(url)
+
+    def _identify_captcha(self):
+        while True:
+            resp = self._session.get('http://weixin.sogou.com/antispider/util/seccode.php?tc=100000')
+            tf = TemporaryFile()
+            tf.write(resp.content)
+            image = Image.open(tf)
+            code = self._identify(image)
+            resp = self._session.post('https://weixin.sogou.com/antispider/thank.php', data={
+                'c': code,
+                'r': 'https://weixin.sogou.com/',
+                'v': 5
+            })
+            resp.encoding = 'utf-8'
+            msg = resp.json()
+            if msg['code'] == 0:
+                return msg['id']
+            print('验证码输入错误！')
+
+    def _identify(self, image):
+        image.show()
+        return input('Sougo验证码：')
