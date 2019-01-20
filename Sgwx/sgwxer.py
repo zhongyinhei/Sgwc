@@ -10,7 +10,7 @@ class Sgwxer:
     def __init__(self):
         self._session = Session()
 
-    def search_article(self, name, pages=1):
+    def search_articles(self, name, pages=1):
         search_urls = [f'http://weixin.sogou.com/weixin?type=2&query={name}&page={page}' for page in range(1, pages + 1)]
         xpath = '//*[@class="news-list"]/li'
         articles = []
@@ -27,12 +27,13 @@ class Sgwxer:
     def search_official_account(self, wechat_id):
         search_url = f'http://weixin.sogou.com/weixin?type=1&query={wechat_id}'
         html_tree = self._get_html(search_url)
-        xpath = '//*[@id="main"]/div[4]/ul/li[1]/div/div[2]/p[1]/a/@href'
+        xpath = '//*[@id="main"]/div[4]/ul/li[1]/div/div[2]'
         official_account = html_tree.xpath(xpath)
         if official_account:
-            return OfficialAccount(official_account[0])
-        else:
-            return None
+            official_account = official_account[0]
+            if wechat_id == official_account.xpath('./p[2]/label/text()')[0]:
+                return OfficialAccount(official_account.xpath('./p[1]/a/@href')[0])
+        return None
 
     def _get_html(self, url):
         resp = self._session.get(url)
