@@ -10,6 +10,7 @@ __pycache__/
 .DS_Store
 .Python
 .idea/
+trash/
 build/
 develop-eggs/
 dist/
