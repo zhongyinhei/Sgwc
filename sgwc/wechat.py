@@ -1,7 +1,8 @@
+from lxml.html import document_fromstring, tostring
 from tempfile import TemporaryFile
 from requests import Session
+from .attributes import *
 from PIL import Image
-from lxml import html
 
 _session = Session()
 
@@ -13,14 +14,16 @@ class Article:
     def __repr__(self):
         return str(self.info)
 
-    def __init__(self, url, title, date, official_url, official_name, digest=''):
+    def __init__(self, url, title, date, official_url, official_name, digest='', image_url=None):
         self._url = url
         self._title = title
         self._date = date
+        self._image_url = image_url
         self._digest = digest
         self._official_url = official_url
         self._official_name = official_name
         self._official = None
+        self._html_text = None
         self._html_tree = None
 
     @property
@@ -34,6 +37,10 @@ class Article:
     @property
     def date(self):
         return self._date
+
+    @property
+    def image_url(self):
+        return self._image_url
 
     @property
     def digest(self):
@@ -64,10 +71,10 @@ class Article:
 
     def save(self, path='.'):
         if not self._html_tree:
-            self._html_tree = _get_html(self._url)
+            self._html_tree = document_fromstring(_get_html(self._url))
         with open(f'{path}/{self._title}.md', 'wb') as file:
             content_node = self._html_tree.xpath('//*[@id="js_content"]')[0]
-            contents = [html.tostring(node) for node in content_node]
+            contents = [tostring(node) for node in content_node]
             text = b'\n'.join(contents)
             text = text.replace(b' data-', b' ')
             file.write(text)
@@ -91,6 +98,7 @@ class Official:
         self._recent_article = recent_article
         self._articles = []
         self._authenticate = None
+        self._html_text = None
         self._html_tree = None
 
     @property
@@ -106,12 +114,12 @@ class Official:
         return self._name
 
     @property
-    def avatar(self):
-        return  # todo
+    def avatar_url(self):
+        return self._avatar_url
 
     @property
-    def qr_code(self):
-        return  # todo
+    def qr_code_url(self):
+        return self._qr_code_url
 
     @property
     def profile_desc(self):
@@ -123,7 +131,12 @@ class Official:
 
     @property
     def recent_article(self):
-        return self._recent_article  # todo
+        if not self._recent_article and not self._html_tree:
+            self._html_text = _get_html(self._url)
+            self._html_tree = document_fromstring(self._html_text)
+        self._articles = official_articles_(self._html_text)
+        self._recent_article = self._articles[0] if self._articles else None
+        return self._recent_article
 
     @property
     def articles(self):
@@ -152,6 +165,26 @@ class Official:
             'recent_article': self._recent_article,
         }
 
+    @classmethod
+    def from_url(cls, url):
+        html_text = _get_html(url)
+        html_tree = document_fromstring(html_text)
+        official_id = official_id_(html_tree)
+        official_name = official_name_(html_tree)
+        official_avatar_url = official_avatar_url_(html_tree)
+        official_qr_code_url = official_qr_code_url_(html_tree)
+        official_profile_desc = official_profile_desc_(html_tree)
+        official_authenticate = official_authenticate_(html_tree)
+        official_articles = official_articles_(html_text)
+        articles = [Article(*article_item[:3], url, official_name, *article_item[3:]) for article_item in
+                    official_articles]
+        official = cls(url, official_id, official_name, official_avatar_url, official_qr_code_url,
+                       official_profile_desc)
+        official._authenticate = official_authenticate
+        official._recent_article = articles[0]
+        official._articles = articles
+        return official
+
 
 def _get_html(url):
     resp = _session.get(url)
@@ -159,7 +192,7 @@ def _get_html(url):
         _identify_captcha()
         return _get_html(url)
     else:
-        return html.document_fromstring(resp.text)
+        return resp.text
 
 
 def _identify_captcha():
