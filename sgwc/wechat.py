@@ -23,7 +23,6 @@ class Article:
         self._official_url = official_url
         self._official_name = official_name
         self._official = None
-        self._html_text = None
         self._html_tree = None
 
     @property
@@ -56,7 +55,7 @@ class Article:
 
     @property
     def official(self):
-        return self._official if self._official else Official(self._official_url)
+        return self._official if self._official else Official.from_url(self._official_url)
 
     @property
     def info(self):
@@ -72,11 +71,14 @@ class Article:
     def save(self, path='.'):
         if not self._html_tree:
             self._html_tree = document_fromstring(_get_html(self._url))
-        with open(f'{path}/{self._title}.md', 'wb') as file:
+        title = self._title
+        title = title.replace('/', '-').replace('\\', '-').replace(':', '-').replace('*', '-')
+        title = title.replace('"', '-').replace('|', '-').replace('<', '-').replace('>', '-')
+        with open(f'{path}/{title}.md', 'w', encoding='utf-8') as file:
             content_node = self._html_tree.xpath('//*[@id="js_content"]')[0]
-            contents = [tostring(node) for node in content_node]
-            text = b'\n'.join(contents)
-            text = text.replace(b' data-', b' ')
+            contents = [tostring(node, encoding='unicode') for node in content_node]
+            text = '\n'.join(contents)
+            text = text.replace(' data-', ' ')
             file.write(text)
 
 
@@ -98,7 +100,6 @@ class Official:
         self._recent_article = recent_article
         self._articles = []
         self._authenticate = None
-        self._html_text = None
         self._html_tree = None
 
     @property
@@ -126,25 +127,41 @@ class Official:
         return self._profile_desc
 
     @property
-    def status(self):
-        return self._status
-
-    @property
     def recent_article(self):
-        if not self._recent_article and not self._html_tree:
-            self._html_text = _get_html(self._url)
-            self._html_tree = document_fromstring(self._html_text)
-        self._articles = official_articles_(self._html_text)
-        self._recent_article = self._articles[0] if self._articles else None
+        if not self._recent_article:
+            self._get_html()
+            # for article_item in official_articles:
+            #     article = Article(**article_item, official_url=url, official_name=official_name)
+            #     article._official = official
+            #     official._articles.append(article)
+            articles = []
+            for article_item in official_articles_(self._html_tree):
+                article = Article(**article_item, official_url=self._url, official_name=self._name)
+                article._official = self
+                articles.append(article)
+            self._articles = articles
+            self._recent_article = self._articles[0] if self._articles else None
         return self._recent_article
 
     @property
     def articles(self):
-        return self._articles  # todo
+        if not self._articles:
+            self._get_html()
+            articles = []
+            for article_item in official_articles_(self._html_tree):
+                article = Article(**article_item, official_url=self._url, official_name=self._name)
+                article._official = self
+                articles.append(article)
+            self._articles = articles
+            self._recent_article = self._articles[0] if self._articles else None
+        return self._articles
 
     @property
     def authenticate(self):
-        return self._authenticate  # todo
+        if not self._authenticate:
+            self._get_html()
+            self._authenticate = official_authenticate_(self._html_tree)
+        return self._authenticate
 
     @property
     def monthly_articles(self):
@@ -158,7 +175,7 @@ class Official:
     def info(self):
         return {
             'url': self._url,
-            'id': self._official_id,
+            'official_id': self._official_id,
             'name': self._name,
             'profile_desc': self._profile_desc,
             'status': f'月发文 {self._status[0]}篇，月访问 {self._status[1]}次' if self._status else None,
@@ -167,23 +184,28 @@ class Official:
 
     @classmethod
     def from_url(cls, url):
-        html_text = _get_html(url)
-        html_tree = document_fromstring(html_text)
+        html_tree = document_fromstring(_get_html(url))
         official_id = official_id_(html_tree)
         official_name = official_name_(html_tree)
         official_avatar_url = official_avatar_url_(html_tree)
         official_qr_code_url = official_qr_code_url_(html_tree)
         official_profile_desc = official_profile_desc_(html_tree)
         official_authenticate = official_authenticate_(html_tree)
-        official_articles = official_articles_(html_text)
-        articles = [Article(*article_item[:3], url, official_name, *article_item[3:]) for article_item in
-                    official_articles]
+        official_articles = official_articles_(html_tree)
         official = cls(url, official_id, official_name, official_avatar_url, official_qr_code_url,
                        official_profile_desc)
+        for article_item in official_articles:
+            article = Article(**article_item, official_url=url, official_name=official_name)
+            article._official = official
+            official._articles.append(article)
         official._authenticate = official_authenticate
-        official._recent_article = articles[0]
-        official._articles = articles
+        official._recent_article = official._articles[0]
+        official._html_tree = html_tree
         return official
+
+    def _get_html(self):
+        if self._html_tree is None:
+            self._html_tree = document_fromstring(_get_html(self._url))
 
 
 def _get_html(url):

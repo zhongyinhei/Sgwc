@@ -18,9 +18,9 @@ def search_articles(keyword, pages=1):
         article_nodes = html_tree.xpath('//*[@class="news-list"]/li')
         for article_node in article_nodes:
             article_url = str(article_node.xpath('./div[2]/h3/a/@href')[0])
-            article_title = str(article_node.xpath('./div[2]/h3/a/text()')[0])
+            article_title = str(article_node.xpath('./div[2]/h3/a')[0].text_content())
             article_date = strftime('%Y-%m-%d', localtime(int(article_node.xpath('./div[2]/div/@t')[0])))
-            article_image_url = str(article_node.xpath('./div[1]/a/img/@src'))
+            article_image_url = str(article_node.xpath('./div[1]/a/img/@src')[0])
             article_digest = str(article_node.xpath('./div[2]/p')[0].text_content())
             official_url = str(article_node.xpath('./div[2]/div/a/@href')[0])
             official_name = str(article_node.xpath('./div[2]/div/a/text()')[0])

@@ -1,6 +1,10 @@
 from time import strftime, localtime
+from lxml.html import tostring
 from re import findall
 from json import loads
+
+__all__ = ['official_id_', 'official_name_', 'official_avatar_url_', 'official_qr_code_url_', 'official_profile_desc_',
+           'official_authenticate_', 'official_articles_']
 
 
 def official_id_(html_tree):
@@ -29,7 +33,8 @@ def official_authenticate_(html_tree):
     return authenticate[0] if authenticate else None
 
 
-def official_articles_(html_text):
+def official_articles_(html_tree):
+    html_text = tostring(doc=html_tree, encoding='unicode')
     domain_name = 'http://mp.weixin.qq.com'
     result = findall('var msgList = {"list":(\[.*?\])};', html_text)
     if not result:
@@ -40,6 +45,11 @@ def official_articles_(html_text):
         for article_item in item['app_msg_ext_info']['multi_app_msg_item_list']:
             url = article_item['content_url'] if article_item['content_url'].startswith('http') \
                 else domain_name + article_item['content_url']
-            article_items.append(
-                (url.replace('&amp;', '&'), article_item['title'], date, article_item['digest'], article_item['cover']))
+            article_items.append({
+                'url': url.replace('&amp;', '&'),
+                'title': article_item['title'],
+                'date': date,
+                'digest': article_item['digest'],
+                'image_url': article_item['cover'],
+            })
     return article_items
