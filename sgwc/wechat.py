@@ -72,8 +72,8 @@ class Article:
         if not self._html_tree:
             self._html_tree = document_fromstring(_get_html(self._url))
         title = self._title
-        title = title.replace('/', '-').replace('\\', '-').replace(':', '-').replace('*', '-')
-        title = title.replace('"', '-').replace('|', '-').replace('<', '-').replace('>', '-')
+        title = title.replace('/', '-').replace('\\', '-').replace(':', '：').replace('*', '-')
+        title = title.replace('"', '”').replace('|', '-').replace('<', '-').replace('>', '-').replace('?', '？')
         with open(f'{path}/{title}.md', 'w', encoding='utf-8') as file:
             content_node = self._html_tree.xpath('//*[@id="js_content"]')[0]
             contents = [tostring(node, encoding='unicode') for node in content_node]
@@ -130,10 +130,6 @@ class Official:
     def recent_article(self):
         if not self._recent_article:
             self._get_html()
-            # for article_item in official_articles:
-            #     article = Article(**article_item, official_url=url, official_name=official_name)
-            #     article._official = official
-            #     official._articles.append(article)
             articles = []
             for article_item in official_articles_(self._html_tree):
                 article = Article(**article_item, official_url=self._url, official_name=self._name)

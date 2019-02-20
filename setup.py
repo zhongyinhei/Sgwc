@@ -14,6 +14,8 @@ setuptools.setup(
         'Operating System :: OS Independent',
     ],
     install_requires=[
-
+        'lxml',
+        'requests',
+        'Pillow',
     ]
 )

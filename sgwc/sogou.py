@@ -107,7 +107,6 @@ def _identify_captcha():
         resp.encoding = 'utf-8'
         msg = resp.json()
         if msg['code'] == 0:
-            print(1)
             return msg['id']
         print('验证码输入错误！')
 
