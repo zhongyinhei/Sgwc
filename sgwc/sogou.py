@@ -3,53 +3,56 @@ from .wechat import Article, Official
 from time import localtime, strftime
 from requests import Session, utils
 from tempfile import TemporaryFile
+from re import search, findall
+from random import randint
 from json import loads
+from time import time
 from PIL import Image
-from re import search
 
 _session = Session()
+_session.headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                  'Chrome/66.0.3359.181 Safari/537.36 '
+}
 
 
 def search_articles(keyword, pages=1):
     search_urls = [f'http://weixin.sogou.com/weixin?type=2&query={keyword}&page={page}' for page in range(1, pages + 1)]
-    articles = []
     for search_url in search_urls:
-        html_tree = document_fromstring(_get_html(search_url))
-        article_nodes = html_tree.xpath('//*[@class="news-list"]/li')
-        for article_node in article_nodes:
-            article_url = str(article_node.xpath('./div[2]/h3/a/@href')[0])
-            article_title = str(article_node.xpath('./div[2]/h3/a')[0].text_content())
-            article_date = strftime('%Y-%m-%d', localtime(int(article_node.xpath('./div[2]/div/@t')[0])))
-            article_image_url = str(article_node.xpath('./div[1]/a/img/@src')[0])
-            article_digest = str(article_node.xpath('./div[2]/p')[0].text_content())
-            official_url = str(article_node.xpath('./div[2]/div/a/@href')[0])
-            official_name = str(article_node.xpath('./div[2]/div/a/text()')[0])
-            articles.append(
-                Article(article_url, article_title, article_date, official_url, official_name, article_digest,
-                        article_image_url))
-    return articles
+        article_nodes = document_fromstring(_get_html(search_url)).xpath('//*[@class="news-list"]/li')
+        _session.headers.update({'Referer': search_url})
+        for node in article_nodes:
+            yield Article(
+                url=_extract(node, './div[2]/h3/a/@data-share'),
+                title=_extract(node, './div[2]/h3/a', True),
+                date=strftime('%Y-%m-%d', localtime(int(_extract(node, './div[2]/div/@t')))),
+                image_url=_extract(node, './div[1]/a/img/@src'),
+                digest=_extract(node, './div[2]/p', True),
+                official_url=_parse_link(_extract(node, './div[2]/div/a/@href')),
+                official_name=_extract(node, './div[2]/div/a/text()'),
+            )
 
 
 def search_officials(keyword, pages=1):
     search_urls = [f'http://weixin.sogou.com/weixin?type=1&query={keyword}&page={page}' for page in range(1, pages + 1)]
-    officials = []
     for search_url in search_urls:
+        _session.headers.update({'Referer': search_url})
         html_text = _get_html(search_url)
         html_tree = document_fromstring(html_text)
         official_nodes = html_tree.xpath('//*[@id="main"]/div[4]/ul/li')
         for official_node in official_nodes:
-            officials.append(_parse_official_node(html_text, official_node))
-    return officials
+            yield _parse_official_node(html_text, official_node)
 
 
 def get_official(official_id):
     search_url = f'http://weixin.sogou.com/weixin?type=1&query={official_id}'
+    _session.headers.update({'Referer': search_url})
     html_text = _get_html(search_url)
     html_tree = document_fromstring(html_text)
     official_node = html_tree.xpath('//*[@id="main"]/div[4]/ul/li[1]')
     if official_node:
         official_node = official_node[0]
-        if str(official_id) == str(official_node.xpath('./div/div[2]/p[2]/label/text()')[0]):
+        if str(official_id) == str(_extract(official_node, './div/div[2]/p[2]/label/text()')):
             return _parse_official_node(html_text, official_node)
     return None
 
@@ -58,25 +61,26 @@ def _parse_official_node(html_text, official_node):
     official_node_id = str(official_node.xpath('./@d')[0])
     monthly_data_url = 'https://weixin.sogou.com' + search('var account_anti_url = \"(.*?)\";', html_text)[1]
     monthly_data = loads(_get_html(monthly_data_url))['msg']
-    official_status = monthly_data[official_node_id].split(',') if official_node_id in monthly_data else ()
-    official_id = str(official_node.xpath('./div/div[2]/p[2]/label/text()')[0])
-    official_url = str(official_node.xpath('./div/div[2]/p[1]/a/@href')[0])
-    official_name = str(official_node.xpath('./div/div[2]/p[1]/a')[0].text_content())
-    official_avatar_url = str(official_node.xpath('./div/div[1]/a/img/@src')[0])
-    official_qr_code_url = str(official_node.xpath('./div/div[3]/span/img[1]/@src')[0])
-    official_profile_desc = str(official_node.xpath('./dl[1]/dd')[0].text_content())
+    status = monthly_data[official_node_id].split(',') if official_node_id in monthly_data else ()
+    official_id = _extract(official_node, './div/div[2]/p[2]/label/text()')
+    url = _parse_link(_extract(official_node, './div/div[2]/p[1]/a/@href'))
+    name = _extract(official_node, './div/div[2]/p[1]/a', True)
+    avatar_url = _extract(official_node, './div/div[1]/a/img/@src')
+    qr_code_url = _extract(official_node, './div/div[3]/span/img[1]/@src')
+    profile_desc = _extract(official_node, './dl[1]/dd', True)
+    recent_article = None
     if official_node.xpath('./dl[2]'):
-        recent_article_url = str(official_node.xpath('./dl[2]/dd/a/@href')[0])
-        recent_article_title = str(official_node.xpath('./dl[2]/dd/a')[0].text_content())
-        recent_article_date = str(official_node.xpath('./dl[2]/dd/span')[0].text_content())
-        recent_article_date = int(search('document.write\(timeConvert\(\'(.*?)\'\)\)', recent_article_date)[1])
-        recent_article_date = strftime('%Y-%m-%d', localtime(recent_article_date))
-        recent_article = Article(recent_article_url, recent_article_title, recent_article_date, official_url,
-                                 official_name)
-    else:
-        recent_article = None
-    return Official(official_url, official_id, official_name, official_avatar_url, official_qr_code_url,
-                    official_profile_desc, official_status, recent_article)
+        article_date = _extract(official_node, './dl[2]/dd/span', True)
+        article_date = int(search('document.write\(timeConvert\(\'(.*?)\'\)\)', article_date)[1])
+        article_date = strftime('%Y-%m-%d', localtime(article_date))
+        recent_article = Article(
+            url=_parse_link(_extract(official_node, './dl[2]/dd/a/@href')),
+            title=_extract(official_node, './dl[2]/dd/a', True),
+            date=article_date,
+            official_url=url,
+            official_name=name,
+        )
+    return Official(url, official_id, name, avatar_url, qr_code_url, profile_desc, status, recent_article)
 
 
 def _get_html(url):
@@ -92,9 +96,29 @@ def _get_html(url):
         return _get_html(url)
 
 
+def _extract(node, xpath, is_text=False):
+    result = node.xpath(xpath)
+    result = result[0] if result else None
+    return result.text_content() if is_text else result
+
+
+def _parse_link(link):
+    if '&k' in link:
+        return link
+    else:
+        b = randint(1, 100)
+        a = link.find('url=')
+        c = link[a + b + 30]
+        url = f'https://weixin.sogou.com{link}&k={b}&h={c}'
+        resp = _session.get(url)
+        resp.encoding = 'utf-8'
+        url_fragments = findall('url \+= \'(.*?)\';', resp.text)
+        return ''.join(url_fragments).replace('@', '')
+
+
 def _identify_captcha():
     while True:
-        resp = _session.get('http://weixin.sogou.com/antispider/util/seccode.php?tc=100000')
+        resp = _session.get(f'http://weixin.sogou.com/antispider/util/seccode.php?tc={int(time())}')
         tf = TemporaryFile()
         tf.write(resp.content)
         captcha_image = Image.open(tf)
@@ -113,4 +137,4 @@ def _identify_captcha():
 
 def _identifying(captcha_image):
     captcha_image.show()
-    return input('Sougo验证码：')
+    return input('请输入Sougo验证码：')
