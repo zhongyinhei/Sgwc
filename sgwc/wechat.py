@@ -1,15 +1,12 @@
 from lxml.html import document_fromstring, tostring
 from tempfile import TemporaryFile
 from dataclasses import dataclass
+from .setting import setting
 from requests import Session
 from random import randint
 from PIL import Image
 
-_session = Session()
-_session.headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
-                  'Chrome/66.0.3359.181 Safari/537.36 '
-}
+_session = setting.session
 
 
 @dataclass(frozen=True)
@@ -28,8 +25,17 @@ class Article:
     def items(self):
         return [(key, value) for key, value in vars(self).items()]
 
-    def save_article(self):
-        pass
+    def save_article(self, save_path='.'):
+        html_tree = document_fromstring(_get_html(self.url))
+        title = self.title
+        title = title.replace('/', '-').replace('\\', '-').replace(':', '：').replace('*', '-')
+        title = title.replace('"', '”').replace('|', '-').replace('<', '-').replace('>', '-').replace('?', '？')
+        with open(f'{save_path}/{title}.md', 'w', encoding='utf-8') as file:
+            content_node = html_tree.xpath('//*[@id="js_content"]')[0]
+            contents = [tostring(node, encoding='unicode') for node in content_node]
+            text = '\n'.join(contents)
+            text = text.replace(' data-', ' ')
+            file.write(text)
 
 
 @dataclass(frozen=True)
@@ -56,22 +62,25 @@ class Official:
         return [(key, value) for key, value in vars(self).items()]
 
 
+def _get_html(url):
+    resp = _session.get(url)
+    if '请输入验证码' in resp.text:
+        _identify_captcha()
+        return _get_html(url)
+    else:
+        return resp.text
+
+
 def _identify_captcha():
     while True:
         cert = randint(100000, 999999)
         resp = _session.get(f'http://mp.weixin.qq.com/mp/verifycode?cert={cert}')
         tf = TemporaryFile()
         tf.write(resp.content)
-        captcha_image = Image.open(tf)
-        code = _identifying(captcha_image)
+        code = setting.wechat_captcha_callback(Image.open(tf))
         resp = _session.post('http://mp.weixin.qq.com/mp/verifycode', data=f'cert={cert}&input={code}&appmsg_token=""')
         resp.encoding = 'utf-8'
         msg = resp.json()
         if msg['ret'] == 0:
             break
         print('验证码输入错误！')
-
-
-def _identifying(captcha_image):
-    captcha_image.show()
-    return input('请输入WeChat验证码：')

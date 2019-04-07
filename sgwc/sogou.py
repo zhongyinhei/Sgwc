@@ -1,19 +1,16 @@
+from requests.utils import add_dict_to_cookiejar
 from lxml.html import document_fromstring
 from .wechat import Article, Official
 from time import localtime, strftime
-from requests import Session, utils
 from tempfile import TemporaryFile
 from re import search, findall
+from .setting import setting
 from random import randint
 from json import loads
 from time import time
 from PIL import Image
 
-_session = Session()
-_session.headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
-                  'Chrome/66.0.3359.181 Safari/537.36 '
-}
+_session = setting.session
 
 
 def search_articles(keyword, pages=1):
@@ -88,11 +85,8 @@ def _get_html(url):
     if url == resp.url:
         return resp.text
     else:
-        cookies = utils.dict_from_cookiejar(_session.cookies)
         snuid = _identify_captcha()
-        cookies['SNUID'] = snuid
-        cookies['SUV'] = snuid
-        _session.cookies = utils.cookiejar_from_dict(cookies)
+        add_dict_to_cookiejar(_session.cookies, {'SNUID': snuid, 'SUV': snuid})
         return _get_html(url)
 
 
@@ -121,8 +115,7 @@ def _identify_captcha():
         resp = _session.get(f'http://weixin.sogou.com/antispider/util/seccode.php?tc={int(time())}')
         tf = TemporaryFile()
         tf.write(resp.content)
-        captcha_image = Image.open(tf)
-        code = _identifying(captcha_image)
+        code = setting.sougo_captcha_callback(Image.open(tf))
         resp = _session.post('https://weixin.sogou.com/antispider/thank.php', data={
             'c': code,
             'r': 'https://weixin.sogou.com/',
@@ -133,8 +126,3 @@ def _identify_captcha():
         if msg['code'] == 0:
             return msg['id']
         print('验证码输入错误！')
-
-
-def _identifying(captcha_image):
-    captcha_image.show()
-    return input('请输入Sougo验证码：')
