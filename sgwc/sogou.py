@@ -58,7 +58,8 @@ def _parse_official_node(html_text, official_node):
     official_node_id = str(official_node.xpath('./@d')[0])
     monthly_data_url = 'https://weixin.sogou.com' + search('var account_anti_url = \"(.*?)\";', html_text)[1]
     monthly_data = loads(_get_html(monthly_data_url))['msg']
-    status = monthly_data[official_node_id].split(',') if official_node_id in monthly_data else ()
+    status = monthly_data[official_node_id].split(',') if official_node_id in monthly_data else []
+    status = (f'月发文: {status[0]}篇', f'月访问: {status[1]}次') if status else ()
     official_id = _extract(official_node, './div/div[2]/p[2]/label/text()')
     url = _parse_link(_extract(official_node, './div/div[2]/p[1]/a/@href'))
     name = _extract(official_node, './div/div[2]/p[1]/a', True)
@@ -66,17 +67,21 @@ def _parse_official_node(html_text, official_node):
     qr_code_url = _extract(official_node, './div/div[3]/span/img[1]/@src')
     profile_desc = _extract(official_node, './dl[1]/dd', True)
     recent_article = None
-    if official_node.xpath('./dl[2]'):
-        article_date = _extract(official_node, './dl[2]/dd/span', True)
-        article_date = int(search('document.write\(timeConvert\(\'(.*?)\'\)\)', article_date)[1])
-        article_date = strftime('%Y-%m-%d', localtime(article_date))
-        recent_article = Article(
-            url=_parse_link(_extract(official_node, './dl[2]/dd/a/@href')),
-            title=_extract(official_node, './dl[2]/dd/a', True),
-            date=article_date,
-            official_url=url,
-            official_name=name,
-        )
+
+    dl_nodes = official_node.xpath('./dl[position()>1]')
+    for node in dl_nodes:
+        dt = _extract(node, './dt/text()')
+        if dt and '最近文章' in dt:
+            article_date = _extract(node, './dd/span', True)
+            article_date = int(search('document.write\(timeConvert\(\'(.*?)\'\)\)', article_date)[1])
+            article_date = strftime('%Y-%m-%d', localtime(article_date))
+            recent_article = Article(
+                url=_parse_link(_extract(node, './dd/a/@href')),
+                title=_extract(node, './dd/a', True),
+                date=article_date,
+                official_url=url,
+                official_name=name,
+            )
     return Official(url, official_id, name, avatar_url, qr_code_url, profile_desc, status, recent_article)
 
 
@@ -93,11 +98,11 @@ def _get_html(url):
 def _extract(node, xpath, is_text=False):
     result = node.xpath(xpath)
     result = result[0] if result else None
-    return result.text_content() if is_text else result
+    return None if result is None else result.text_content() if is_text else result
 
 
 def _parse_link(link):
-    if '&k' in link:
+    if not link or'&k' in link:
         return link
     else:
         b = randint(1, 100)
