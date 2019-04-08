@@ -54,6 +54,23 @@ def get_official(official_id):
     return None
 
 
+def get_hot_articles(pages=2):
+    urls = [f'https://weixin.sogou.com/pcindex/pc/pc_0/{index}.html' for index in range(1, pages + 1)]
+    for url in urls:
+        html_tree = document_fromstring(_get_html(url))
+        article_nodes = html_tree.xpath('/html/body/li')
+        for node in article_nodes:
+            url = _extract(node, './div[1]/a/@href')
+            title = _extract(node, './div[2]/h3/a', True)
+            date = _extract(node, './div[2]/div/span/@t')
+            date = strftime('%Y-%m-%d', localtime(int(date)))
+            official_url = _extract(node, './div[2]/div/a/@href')
+            official_name = _extract(node, './div[2]/div/a', True)
+            digest = _extract(node, './div[2]/p', True)
+            image_url = _extract(node, './div[1]/a/img/@src')
+            yield Article(url, title, date, official_url, official_name, digest, image_url)
+
+
 def _parse_official_node(html_text, official_node):
     official_node_id = str(official_node.xpath('./@d')[0])
     monthly_data_url = 'https://weixin.sogou.com' + search('var account_anti_url = \"(.*?)\";', html_text)[1]
@@ -88,6 +105,7 @@ def _parse_official_node(html_text, official_node):
 def _get_html(url):
     resp = _session.get(url)
     if url == resp.url:
+        resp.encoding = 'utf-8'
         return resp.text
     else:
         snuid = _identify_captcha()

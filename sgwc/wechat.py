@@ -68,6 +68,7 @@ def _get_html(url):
         _identify_captcha()
         return _get_html(url)
     else:
+        resp.encoding = 'utf-8'
         return resp.text
 
 
