@@ -5,7 +5,7 @@
 
 ## 安装 
 ```
-pip3 install sgwc
+git clone https://github.com/Czw96/Sgwc.git
 ```
 
 ## 使用
