@@ -1,9 +1,11 @@
 from lxml.html import document_fromstring, tostring
+from time import localtime, strftime
 from tempfile import TemporaryFile
 from dataclasses import dataclass
 from .setting import setting
-from requests import Session
 from random import randint
+from re import findall
+from json import loads
 from PIL import Image
 
 _session = setting.session
@@ -46,7 +48,7 @@ class Official:
     avatar_url: str
     qr_code_url: str
     profile_desc: str
-    status: tuple
+    status: tuple = ()
     recent_article: Article = None
     articles: [Article] = None
     authenticate: str = None
@@ -55,8 +57,48 @@ class Official:
         return getattr(self, key, None)
 
     @classmethod
-    def from_url(cls):
-        pass
+    def from_url(cls, url):
+        domain_name = 'http://mp.weixin.qq.com'
+        html_text = _get_html(url)
+        html_tree = document_fromstring(html_text)
+        official_id = _extract(html_tree, '/html/body/div/div[1]/div[1]/div[1]/div/p', True)[5:]
+        name = _extract(html_tree, '/html/body/div/div[1]/div[1]/div[1]/div/strong', True)
+        avatar_url = _extract(html_tree, '/html/body/div/div[1]/div[1]/div[1]/span/img/@src')
+        qr_code_url = _extract(html_tree, '//*[@id="js_pc_qr_code_img"]/@src')
+        profile_desc = _extract(html_tree, '/html/body/div/div[1]/div[1]/ul/li[1]/div', True)
+        authenticate = _extract(html_tree, '/html/body/div/div[1]/div[1]/ul/li[2]/div', True)
+        articles = []
+
+        result = findall('var msgList = {"list":(\[.*?\])};', html_text)
+        if result:
+            for item in loads(result[0]):
+                date = strftime('%Y-%m-%d', localtime(item['comm_msg_info']['datetime']))
+                for info in item['app_msg_ext_info']['multi_app_msg_item_list']:
+                    article_url = info['content_url'] if info['content_url'].startswith('http') else domain_name + info[
+                        'content_url']
+                    articles.append(Article(
+                        url=article_url.replace('&amp;', '&'),
+                        title=info['title'],
+                        date=date,
+                        official_url=url,
+                        official_name=name,
+                        digest=info['digest'],
+                        image_url=info['cover'],
+                    ))
+
+        recent_article = articles[0] if articles else None
+        articles = articles if articles else None
+        return cls(
+            url=url,
+            official_id=official_id,
+            name=name,
+            avatar_url=avatar_url,
+            qr_code_url=qr_code_url,
+            profile_desc=profile_desc,
+            authenticate=authenticate,
+            recent_article=recent_article,
+            articles=articles,
+        )
 
     def items(self):
         return [(key, value) for key, value in vars(self).items()]
@@ -70,6 +112,12 @@ def _get_html(url):
     else:
         resp.encoding = 'utf-8'
         return resp.text
+
+
+def _extract(node, xpath, is_text=False):
+    result = node.xpath(xpath)
+    result = result[0] if result else None
+    return None if result is None else result.text_content().strip() if is_text else result
 
 
 def _identify_captcha():

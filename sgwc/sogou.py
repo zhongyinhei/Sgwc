@@ -116,7 +116,7 @@ def _get_html(url):
 def _extract(node, xpath, is_text=False):
     result = node.xpath(xpath)
     result = result[0] if result else None
-    return None if result is None else result.text_content() if is_text else result
+    return None if result is None else result.text_content().strip() if is_text else result
 
 
 def _parse_link(link):
