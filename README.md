@@ -39,7 +39,6 @@ setting.wechat_captcha_callback = wechat_captcha_callback  # 微信验证码
 - 返回生成 `Article` 实例的 `generator` 对象
 
 #### Article
-
 | 属性 | 返回类型 | 说明 |
 |------|:--------:|------|
 | url | str | 链接     |
@@ -52,27 +51,18 @@ setting.wechat_captcha_callback = wechat_captcha_callback  # 微信验证码
 | save_article(save_path='.') |          | 保存文章 Markdown 文件(save_path: 保存路径)     |
 | items() | list | 返回可遍历的(键, 值) 元组数组     |
 
-
-###### url: str --- 链接
-###### title: str --- 标题
-###### date: str --- 日期
-###### image_url: str --- 图片链接
-###### digest: str --- 概述
-###### official_url: str --- 文章公众号链接
-###### official_name: str --- 文章公众号名称
-###### save_article(save_path='.') --- 保存文章 Markdown 文件(save_path: 保存路径)
-###### items() --- 返回可遍历的(键, 值) 元组数组
-
 #### Official
-###### url: str --- 链接
-###### official_id: str --- 公众号
-###### name: str --- 公众号名称
-###### avatar_url: str --- 公众号头像链接
-###### qr_code_url: str --- 公众号二维码链接
-###### profile_desc: str --- 公众号简介
-###### status: tuple --- 公众号每月状态, (每月发文数, 每月访问数)
-###### recent_article: Article --- 最新文章 Article 实例
-###### articles: \[Article\] --- 最近文章 Article 实例数组
-###### authenticate: str --- 认证
-###### from_url(url) --- 类方法, 通过公众号链接生成 Official 实例
-###### items() --- 返回可遍历的(键, 值) 元组数组
+| 属性 | 返回类型 | 说明 |
+|------|:--------:|------|
+| url | str | 链接 |
+| official_id | str | 公众号 |
+| name | str | 公众号名称 |
+| avatar_url | str | 公众号头像链接 |
+| qr_code_url | str | 公众号二维码链接 |
+| profile_desc | str | 公众号简介 |
+| status | tuple | 公众号每月状态, (每月发文数, 每月访问数) |
+| recent_article | Article | 最新文章 Article 实例 |
+| articles | \[Article\] | 最近文章 Article 实例数组 |
+| authenticate | str | 认证 |
+| from_url(url) | Official | 类方法, 通过公众号链接生成 Official 实例 |
+| items() | list | 返回可遍历的(键, 值) 元组数组 |
