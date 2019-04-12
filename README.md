@@ -18,7 +18,7 @@ articles = get_hot_articles()  # 获取热门文章
 #### 从 Article、Official 实例对象提取相关信息
 ```
 article.url
-article['url']  # 同时可以像字典类型一样, 提取信息(但不是字典类型)
+article['url']  # 可以像字典类型一样, 提取信息(但不是字典类型)
 article.items()  # 返回可遍历的(键, 值) 元组数组
 ```
 #### setting

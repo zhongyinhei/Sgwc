@@ -148,6 +148,7 @@ def _parse_link(link):
 
 def _identify_captcha():
     for _ in range(setting.repeat_times):
+        _session.headers.update({'Referer': 'https://weixin.sogou.com'})
         resp = _session.get(f'http://weixin.sogou.com/antispider/util/seccode.php?tc={int(time())}')
         tf = TemporaryFile()
         tf.write(resp.content)
