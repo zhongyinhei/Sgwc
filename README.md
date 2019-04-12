@@ -25,34 +25,35 @@ article.items()  # 返回可遍历的(键, 值) 元组数组
 ```
 from sgwc import setting
 
-# 自定义设置搜狗验证码回调函数, 参数: 验证码图片(pillow Image 对象), 返回: 验证码
+# 自定义搜狗验证码回调函数, 参数: 验证码图片(pillow Image 对象), 返回: 验证码
 setting.sougo_captcha_callback = sougo_captcha_callback
 
-# 自定义设置微信验证码回调函数, 参数: 验证码图片(pillow Image 对象), 返回: 验证码
+# 自定义微信验证码回调函数, 参数: 验证码图片(pillow Image 对象), 返回: 验证码
 setting.wechat_captcha_callback = wechat_captcha_callback
 
 setting.repeat_times = 3  # 验证码、代理错误重复次数
 
-# 自定义设置获取代理函数，返回: {'http': 'http://127.0.0.1:80', 'https': 'http://127.0.0.1:80'}
+# 自定义获取代理函数
+# 返回: {'http': 'http://127.0.0.1:80', 'https': 'http://127.0.0.1:80'}
 # 详见 http://docs.python-requests.org/en/master/user/advanced/#proxies
 setting.get_proxy = get_proxy 
 
-setting.proxy_timeout = 10  # 使用代理超时设置
+setting.proxy_timeout = 10  # 代理超时设置
 
 # 代理使用失败回调函数(当代理失败达到指定次数将会调用), 参数: 链接
 setting.proxy_error_callback = proxy_error_callback
 ```
-- 当设置了代理函数，将不会执行验证码回调函数
+- 当设置了 `get_proxy` 函数，将不会执行验证码回调函数
 
 ## API
 #### get_official(official_id)
-- 返回 `Official` 实例或 `None`
+- 返回 `Official` 对象或 `None`
 #### search_officials(keyword, pages=1)
-- 返回生成 `Official` 实例的 `generator` 对象
+- 返回 `Official-Generator` 对象
 #### search_articles(keyword, pages=1)
-- 返回生成 `Article` 实例的 `generator` 对象
+- 返回 `Article-Generator` 对象
 #### get_hot_articles(pages=2)
-- 返回生成 `Article` 实例的 `generator` 对象
+- 返回 `Article-Generator` 对象
 
 #### Article
 | 属性 | 返回类型 | 说明 |
@@ -64,7 +65,7 @@ setting.proxy_error_callback = proxy_error_callback
 | digest | str | 文章概述 |
 | official_url | str | 公众号链接 |
 | official_name | str | 公众号名称 |
-| save_article(save_path='.') | None | 保存文章 Markdown 文件(save_path: 保存路径) |
+| save_article(save_path='.') | None | 保存文章为 Markdown 文件(save_path: 保存路径) |
 | items() | list | 返回可遍历的(键, 值) 元组数组 |
 
 #### Official
