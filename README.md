@@ -25,10 +25,10 @@ article.items()  # 返回可遍历的(键, 值) 元组数组
 ```
 from sgwc import setting
 
-# 自定义设置搜狗验证码回调函数, 参数: 验证码图片, 返回: 验证码
+# 自定义设置搜狗验证码回调函数, 参数: 验证码图片(pillow Image 对象), 返回: 验证码
 setting.sougo_captcha_callback = sougo_captcha_callback
 
-# 自定义设置微信验证码回调函数, 参数: 验证码图片, 返回: 验证码
+# 自定义设置微信验证码回调函数, 参数: 验证码图片(pillow Image 对象), 返回: 验证码
 setting.wechat_captcha_callback = wechat_captcha_callback
 
 setting.repeat_times = 3  # 验证码、代理错误重复次数
@@ -42,6 +42,7 @@ setting.proxy_timeout = 10  # 使用代理超时设置
 # 代理使用失败回调函数(当代理失败达到指定次数将会调用), 参数: 链接
 setting.proxy_error_callback = proxy_error_callback
 ```
+- 当设置了代理函数，将不会执行验证码回调函数
 
 ## API
 #### get_official(official_id)
