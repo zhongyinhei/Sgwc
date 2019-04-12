@@ -3,7 +3,7 @@
 
 ## 安装 
 ```
-pip3 install sgwc
+pip3 install sgwc --upgrade
 ```
 
 ## 使用
