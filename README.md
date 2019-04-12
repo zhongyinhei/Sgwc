@@ -19,13 +19,28 @@ articles = get_hot_articles()  # 获取热门文章
 ```
 article.url
 article['url']  # 同时可以像字典类型一样, 提取信息(但不是字典类型)
+article.items()  # 返回可遍历的(键, 值) 元组数组
 ```
-#### 自定义设置验证码回调函数
+#### setting
 ```
 from sgwc import setting
 
-setting.sougo_captcha_callback = sougo_captcha_callback  # 搜狗验证码
-setting.wechat_captcha_callback = wechat_captcha_callback  # 微信验证码
+# 自定义设置搜狗验证码回调函数, 参数: 验证码图片, 返回: 验证码
+setting.sougo_captcha_callback = sougo_captcha_callback
+
+# 自定义设置微信验证码回调函数, 参数: 验证码图片, 返回: 验证码
+setting.wechat_captcha_callback = wechat_captcha_callback
+
+setting.repeat_times = 3  # 验证码、代理错误重复次数
+
+# 自定义设置获取代理函数，返回: {'http': 'http://127.0.0.1:80', 'https': 'http://127.0.0.1:80'}
+# 详见 http://docs.python-requests.org/en/master/user/advanced/#proxies
+setting.get_proxy = get_proxy 
+
+setting.proxy_timeout = 10  # 使用代理超时设置
+
+# 代理使用失败回调函数(当代理失败达到指定次数将会调用), 参数: 链接
+setting.proxy_error_callback = proxy_error_callback
 ```
 
 ## API

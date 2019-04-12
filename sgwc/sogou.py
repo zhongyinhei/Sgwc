@@ -1,3 +1,4 @@
+from requests.exceptions import Timeout, ProxyError, TooManyRedirects
 from requests.utils import add_dict_to_cookiejar
 from lxml.html import document_fromstring
 from .wechat import Article, Official
@@ -16,7 +17,9 @@ _session = setting.session
 def search_articles(keyword, pages=1):
     search_urls = [f'http://weixin.sogou.com/weixin?type=2&query={keyword}&page={page}' for page in range(1, pages + 1)]
     for search_url in search_urls:
-        article_nodes = document_fromstring(_get_html(search_url)).xpath('//*[@class="news-list"]/li')
+        html_text = _get_html(search_url)
+        if not html_text: continue
+        article_nodes = document_fromstring(html_text).xpath('//*[@class="news-list"]/li')
         _session.headers.update({'Referer': search_url})
         for node in article_nodes:
             yield Article(
@@ -35,6 +38,7 @@ def search_officials(keyword, pages=1):
     for search_url in search_urls:
         _session.headers.update({'Referer': search_url})
         html_text = _get_html(search_url)
+        if not html_text: continue
         html_tree = document_fromstring(html_text)
         official_nodes = html_tree.xpath('//*[@id="main"]/div[4]/ul/li')
         for official_node in official_nodes:
@@ -45,6 +49,7 @@ def get_official(official_id):
     search_url = f'http://weixin.sogou.com/weixin?type=1&query={official_id}'
     _session.headers.update({'Referer': search_url})
     html_text = _get_html(search_url)
+    if not html_text: return None
     html_tree = document_fromstring(html_text)
     official_node = html_tree.xpath('//*[@id="main"]/div[4]/ul/li[1]')
     if official_node:
@@ -57,7 +62,7 @@ def get_official(official_id):
 def get_hot_articles(pages=2):
     urls = [f'https://weixin.sogou.com/pcindex/pc/pc_0/{index}.html' for index in range(1, pages + 1)]
     for url in urls:
-        html_tree = document_fromstring(_get_html(url))
+        html_tree = document_fromstring(_get_html(url, False))
         article_nodes = html_tree.xpath('/html/body/li')
         for node in article_nodes:
             url = _extract(node, './div[1]/a/@href')
@@ -74,7 +79,7 @@ def get_hot_articles(pages=2):
 def _parse_official_node(html_text, official_node):
     official_node_id = str(official_node.xpath('./@d')[0])
     monthly_data_url = 'https://weixin.sogou.com' + search('var account_anti_url = \"(.*?)\";', html_text)[1]
-    monthly_data = loads(_get_html(monthly_data_url))['msg']
+    monthly_data = loads(_get_html(monthly_data_url, False))['msg']
     status = monthly_data[official_node_id].split(',') if official_node_id in monthly_data else []
     status = (f'月发文: {status[0]}篇', f'月访问: {status[1]}次') if status else ()
     official_id = _extract(official_node, './div/div[2]/p[2]/label/text()')
@@ -102,15 +107,23 @@ def _parse_official_node(html_text, official_node):
     return Official(url, official_id, name, avatar_url, qr_code_url, profile_desc, status, recent_article)
 
 
-def _get_html(url):
-    resp = _session.get(url)
-    if url == resp.url:
-        resp.encoding = 'utf-8'
-        return resp.text
+def _get_html(url, is_proxy=True):
+
+    if is_proxy and setting.get_proxy:
+        for _ in range(setting.repeat_times):
+            proxies = setting.get_proxy()
+            try: resp = _session.get(url, proxies=proxies, timeout=setting.proxy_timeout)
+            except (Timeout, ProxyError, TooManyRedirects): continue
+            if url == resp.url: return str(resp.content, 'utf-8')
+        else:
+            resp = _session.get(url)
+            if url == resp.url: return str(resp.content, 'utf-8')
+            setting.proxy_error_callback(url)
+            return None
     else:
-        snuid = _identify_captcha()
-        add_dict_to_cookiejar(_session.cookies, {'SNUID': snuid, 'SUV': snuid})
-        return _get_html(url)
+        resp = _session.get(url)
+        if url == resp.url: return str(resp.content, 'utf-8')
+        else: return _get_html(url, False) if _identify_captcha() else None
 
 
 def _extract(node, xpath, is_text=False):
@@ -134,18 +147,21 @@ def _parse_link(link):
 
 
 def _identify_captcha():
-    while True:
+    for _ in range(setting.repeat_times):
         resp = _session.get(f'http://weixin.sogou.com/antispider/util/seccode.php?tc={int(time())}')
         tf = TemporaryFile()
         tf.write(resp.content)
         code = setting.sougo_captcha_callback(Image.open(tf))
+        if not code: continue
         resp = _session.post('https://weixin.sogou.com/antispider/thank.php', data={
             'c': code,
             'r': 'https://weixin.sogou.com/',
-            'v': 5
+            'v': 5,
         })
         resp.encoding = 'utf-8'
         msg = resp.json()
         if msg['code'] == 0:
-            return msg['id']
-        print('验证码输入错误！')
+            add_dict_to_cookiejar(_session.cookies, {'SNUID': msg['id'], 'SUV': msg['id']})
+            return True
+        print('验证码错误！')
+    return False

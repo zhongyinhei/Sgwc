@@ -10,6 +10,10 @@ class _Setting:
         }
         self.sougo_captcha_callback = _sougo_captcha_callback
         self.wechat_captcha_callback = _wechat_captcha_callback
+        self.repeat_times = 3
+        self.get_proxy = None
+        self.proxy_timeout = 10
+        self.proxy_error_callback = lambda url: print(f'Proxy error: {url}')
 
 
 def _sougo_captcha_callback(captcha_image):

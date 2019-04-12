@@ -1,3 +1,4 @@
+from requests.exceptions import Timeout, ProxyError, TooManyRedirects
 from lxml.html import document_fromstring, tostring
 from time import localtime, strftime
 from tempfile import TemporaryFile
@@ -28,16 +29,18 @@ class Article:
         return [(key, value) for key, value in vars(self).items()]
 
     def save_article(self, save_path='.'):
-        html_tree = document_fromstring(_get_html(self.url))
-        title = self.title
-        title = title.replace('/', '-').replace('\\', '-').replace(':', '：').replace('*', '-')
-        title = title.replace('"', '”').replace('|', '-').replace('<', '-').replace('>', '-').replace('?', '？')
-        with open(f'{save_path}/{title}.md', 'w', encoding='utf-8') as file:
-            content_node = html_tree.xpath('//*[@id="js_content"]')[0]
-            contents = [tostring(node, encoding='unicode') for node in content_node]
-            text = '\n'.join(contents)
-            text = text.replace(' data-', ' ')
-            file.write(text)
+        html_text = _get_html(self.url)
+        if html_text:
+            html_tree = document_fromstring(_get_html(self.url))
+            title = self.title
+            title = title.replace('/', '-').replace('\\', '-').replace(':', '：').replace('*', '-')
+            title = title.replace('"', '”').replace('|', '-').replace('<', '-').replace('>', '-').replace('?', '？')
+            with open(f'{save_path}/{title}.md', 'w', encoding='utf-8') as file:
+                content_node = html_tree.xpath('//*[@id="js_content"]')[0]
+                contents = [tostring(node, encoding='unicode') for node in content_node]
+                text = '\n'.join(contents)
+                text = text.replace(' data-', ' ')
+                file.write(text)
 
 
 @dataclass(frozen=True)
@@ -60,11 +63,12 @@ class Official:
     def from_url(cls, url):
         domain_name = 'http://mp.weixin.qq.com'
         html_text = _get_html(url)
+        if not html_text: return None
         html_tree = document_fromstring(html_text)
         official_id = _extract(html_tree, '/html/body/div/div[1]/div[1]/div[1]/div/p', True)[5:]
         name = _extract(html_tree, '/html/body/div/div[1]/div[1]/div[1]/div/strong', True)
         avatar_url = _extract(html_tree, '/html/body/div/div[1]/div[1]/div[1]/span/img/@src')
-        qr_code_url = _extract(html_tree, '//*[@id="js_pc_qr_code_img"]/@src')
+        qr_code_url = domain_name + _extract(html_tree, '//*[@id="js_pc_qr_code_img"]/@src')
         profile_desc = _extract(html_tree, '/html/body/div/div[1]/div[1]/ul/li[1]/div', True)
         authenticate = _extract(html_tree, '/html/body/div/div[1]/div[1]/ul/li[2]/div', True)
         articles = []
@@ -105,13 +109,21 @@ class Official:
 
 
 def _get_html(url):
-    resp = _session.get(url)
-    if '请输入验证码' in resp.text:
-        _identify_captcha()
-        return _get_html(url)
+    if setting.get_proxy:
+        for _ in range(setting.repeat_times):
+            proxies = setting.get_proxy()
+            try: resp = _session.get(url, proxies=proxies, timeout=setting.proxy_timeout)
+            except (Timeout, ProxyError, TooManyRedirects): continue
+            if url == resp.url: return str(resp.content, 'utf-8')
+        else:
+            resp = _session.get(url)
+            if url == resp.url: return str(resp.content, 'utf-8')
+            setting.proxy_error_callback(url)
+            return None
     else:
-        resp.encoding = 'utf-8'
-        return resp.text
+        resp = _session.get(url)
+        if '请输入验证码' in resp.text: return _get_html(url) if _identify_captcha() else None
+        else: return str(resp.content, 'utf-8')
 
 
 def _extract(node, xpath, is_text=False):
@@ -121,15 +133,16 @@ def _extract(node, xpath, is_text=False):
 
 
 def _identify_captcha():
-    while True:
+    for _ in range(setting.repeat_times):
         cert = randint(100000, 999999)
         resp = _session.get(f'http://mp.weixin.qq.com/mp/verifycode?cert={cert}')
         tf = TemporaryFile()
         tf.write(resp.content)
         code = setting.wechat_captcha_callback(Image.open(tf))
+        if not code: continue
         resp = _session.post('http://mp.weixin.qq.com/mp/verifycode', data=f'cert={cert}&input={code}&appmsg_token=""')
         resp.encoding = 'utf-8'
         msg = resp.json()
-        if msg['ret'] == 0:
-            break
-        print('验证码输入错误！')
+        if msg['ret'] == 0: return True
+        print('验证码错误！')
+    return False
