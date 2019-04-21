@@ -10,6 +10,7 @@ class _Setting:
         }
         self.sougo_captcha_callback = _sougo_captcha_callback
         self.wechat_captcha_callback = _wechat_captcha_callback
+        self.wechat_link_error_callback = _wechat_link_error_callback
         self.repeat_times = 3
         self.get_proxy = None
         self.proxy_timeout = 10
@@ -24,6 +25,10 @@ def _sougo_captcha_callback(captcha_image):
 def _wechat_captcha_callback(captcha_image):
     captcha_image.show()
     return input('请输入WeChat验证码：')
+
+
+def _wechat_link_error_callback(url):
+    print(f'Link error: {url}')
 
 
 setting = _Setting()

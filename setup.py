@@ -6,7 +6,7 @@ with open('README.md', 'r', encoding='utf-8') as fh:
 
 setuptools.setup(
     name='sgwc',
-    version='2019.4.13',
+    version='2019.4.21',
     author='Czw_96',
     author_email='459749926@qq.com',
     description='搜狗微信文章爬虫',

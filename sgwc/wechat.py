@@ -31,7 +31,7 @@ class Article:
     def save_article(self, save_path='.'):
         html_text = _get_html(self.url)
         if html_text:
-            html_tree = document_fromstring(_get_html(self.url))
+            html_tree = document_fromstring(html_text)
             title = self.title
             title = title.replace('/', '-').replace('\\', '-').replace(':', '：').replace('*', '-')
             title = title.replace('"', '”').replace('|', '-').replace('<', '-').replace('>', '-').replace('?', '？')
@@ -41,6 +41,10 @@ class Article:
                 text = '\n'.join(contents)
                 text = text.replace(' data-', ' ')
                 file.write(text)
+
+    def get_html(self):
+        return _get_html(self.url)
+
 
 
 @dataclass(frozen=True)
@@ -123,6 +127,9 @@ def _get_html(url):
     else:
         resp = _session.get(url)
         if '请输入验证码' in resp.text: return _get_html(url) if _identify_captcha() else None
+        elif '系统出错' in resp.text or '链接已过期' in resp.text:
+            setting.wechat_link_error_callback(url)
+            return None
         else: return str(resp.content, 'utf-8')
 
 

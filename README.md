@@ -31,6 +31,9 @@ setting.sougo_captcha_callback = sougo_captcha_callback
 # 自定义微信验证码回调函数, 参数: 验证码图片(pillow Image 对象), 返回: 验证码
 setting.wechat_captcha_callback = wechat_captcha_callback
 
+# 微信链接异常回调函数(系统出错/链接过期), 参数: 链接
+self.wechat_link_error_callback = _wechat_link_error_callback
+
 setting.repeat_times = 3  # 验证码、代理错误重复次数
 
 # 自定义获取代理函数
@@ -67,6 +70,7 @@ setting.proxy_error_callback = proxy_error_callback
 | official_name | str | 公众号名称 |
 | save_article(save_path='.') | None | 保存文章为 Markdown 文件(save_path: 保存路径) |
 | items() | list | 返回可遍历的(键, 值) 元组数组 |
+| get_html() | str | 返回文章html |
 
 #### Official
 | 属性 | 返回类型 | 说明 |
