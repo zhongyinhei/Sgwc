@@ -6,14 +6,14 @@ with open('README.md', 'r', encoding='utf-8') as fh:
 
 setuptools.setup(
     name='sgwc',
-    version='2019.4.21',
+    version='2019.4.24',
     author='Czw_96',
     author_email='459749926@qq.com',
     description='搜狗微信文章爬虫',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/Czw96/sgwc',
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(exclude=('trash',)),
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',
@@ -24,5 +24,5 @@ setuptools.setup(
         'requests',
         'Pillow',
         'dataclasses',
-    ]
+    ],
 )

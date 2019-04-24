@@ -59,8 +59,8 @@ def get_official(official_id):
     return None
 
 
-def get_hot_articles(pages=2):
-    urls = [f'https://weixin.sogou.com/pcindex/pc/pc_0/{index}.html' for index in range(1, pages + 1)]
+def get_hot_articles(pages=2, article_type=0):
+    urls = [f'https://weixin.sogou.com/pcindex/pc/pc_{article_type}/{index}.html' for index in range(1, pages + 1)]
     for url in urls:
         html_tree = document_fromstring(_get_html(url, False))
         article_nodes = html_tree.xpath('/html/body/li')
@@ -133,8 +133,7 @@ def _extract(node, xpath, is_text=False):
 
 
 def _parse_link(link):
-    if not link or'&k' in link:
-        return link
+    if not link or'&k' in link: return link
     else:
         b = randint(1, 100)
         a = link.find('url=')

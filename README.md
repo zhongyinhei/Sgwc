@@ -34,10 +34,10 @@ setting.wechat_captcha_callback = wechat_captcha_callback
 # 微信链接异常回调函数(系统出错/链接过期), 参数: 链接
 self.wechat_link_error_callback = _wechat_link_error_callback
 
-setting.repeat_times = 3  # 验证码、代理错误重复次数
+setting.repeat_times = 3  # 验证码/代理错误重复次数, 超过重复次数将跳过
 
 # 自定义获取代理函数
-# 返回: {'http': 'http://127.0.0.1:80', 'https': 'http://127.0.0.1:80'}
+# 返回格式: {'http': 'http://127.0.0.1:80', 'https': 'http://127.0.0.1:80'}
 # 详见 http://docs.python-requests.org/en/master/user/advanced/#proxies
 setting.get_proxy = get_proxy 
 
@@ -55,8 +55,34 @@ setting.proxy_error_callback = proxy_error_callback
 - 返回 `Official-Generator` 对象
 #### search_articles(keyword, pages=1)
 - 返回 `Article-Generator` 对象
-#### get_hot_articles(pages=2)
+#### get_hot_articles(pages=2, article_type=0)
 - 返回 `Article-Generator` 对象
+
+###### article_type 对照表
+| 数值 | 类型 |
+|:----:|:----:|
+| 0 | 热门 |
+| 1 | 搞笑 |
+| 2 | 养生堂 |
+| 3 | 私房话 |
+| 4 | 八卦精 |
+| 5 | 科技咖 |
+| 6 | 财经迷 |
+| 7 | 汽车控 |
+| 8 | 生活家 |
+| 9 | 时尚圈 |
+| 10 | 育儿 |
+| 11 | 旅游 |
+| 12 | 职场 |
+| 13 | 美食 |
+| 14 | 历史 |
+| 15 | 教育 |
+| 16 | 星座 |
+| 17 | 体育 |
+| 18 | 军事 |
+| 19 | 游戏 |
+| 20 | 萌宠 |
+
 
 #### Article
 | 属性 | 返回类型 | 说明 |
