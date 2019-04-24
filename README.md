@@ -34,7 +34,8 @@ setting.wechat_captcha_callback = wechat_captcha_callback
 # 微信链接异常回调函数(系统出错/链接过期), 参数: 链接
 self.wechat_link_error_callback = _wechat_link_error_callback
 
-setting.repeat_times = 3  # 验证码/代理错误重复次数, 超过重复次数将跳过
+# 验证码/代理错误(代理不可用或超时)重复次数, 超过重复次数将跳过
+setting.repeat_times = 3
 
 # 自定义获取代理函数
 # 返回格式: {'http': 'http://127.0.0.1:80', 'https': 'http://127.0.0.1:80'}
@@ -43,7 +44,7 @@ setting.get_proxy = get_proxy
 
 setting.proxy_timeout = 10  # 代理超时设置
 
-# 代理使用失败回调函数(当代理失败达到指定次数将会调用), 参数: 链接
+# 代理使用失败回调函数(当代理失败达到重复次数将会调用), 参数: 链接
 setting.proxy_error_callback = proxy_error_callback
 ```
 - 当设置了 `get_proxy` 函数，将不会执行验证码回调函数
