@@ -25,6 +25,10 @@ article.items()  # 返回可遍历的(键, 值) 元组数组
 ```
 from sgwc import setting
 
+# 自定义设置获取session对象函数, 返回: Session对象
+# 详见: https://2.python-requests.org//en/master/user/advanced/#session-objects
+setting.get_session = get_session
+
 # 自定义搜狗验证码回调函数, 参数: 验证码图片(pillow Image 对象), 返回: 验证码
 setting.sougo_captcha_callback = sougo_captcha_callback
 
@@ -39,7 +43,7 @@ setting.repeat_times = 3
 
 # 自定义获取代理函数
 # 返回格式: {'http': 'http://127.0.0.1:80', 'https': 'http://127.0.0.1:80'}
-# 详见 http://docs.python-requests.org/en/master/user/advanced/#proxies
+# 详见: https://2.python-requests.org//en/master/user/advanced/#proxies
 setting.get_proxy = get_proxy 
 
 setting.proxy_timeout = 10  # 代理超时设置
@@ -51,12 +55,24 @@ setting.proxy_error_callback = proxy_error_callback
 
 ## API
 #### get_official(official_id)
+- official_id: 微信号
 - 返回 `Official` 对象或 `None`
-#### search_officials(keyword, pages=1)
+
+#### search_officials(keyword, pages=1, begin_page=1)
+- keyword: 搜索关键字
+- pages: 获取页面数量
+- begin_page: 起始页
 - 返回 `Official-Generator` 对象
-#### search_articles(keyword, pages=1)
+
+#### search_articles(keyword, pages=1, begin_page=1)
+- keyword: 搜索关键字
+- pages: 获取页面数量
+- begin_page: 起始页
 - 返回 `Article-Generator` 对象
+
 #### get_hot_articles(pages=2, article_type=0)
+- pages: 获取页面数量
+- article_type: 文章类型
 - 返回 `Article-Generator` 对象
 
 ###### article_type 对照表

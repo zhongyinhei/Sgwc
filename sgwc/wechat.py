@@ -3,13 +3,13 @@ from lxml.html import document_fromstring, tostring
 from time import localtime, strftime
 from tempfile import TemporaryFile
 from dataclasses import dataclass
-from .setting import setting
 from random import randint
 from re import findall
 from json import loads
 from PIL import Image
+from . import setting
 
-_session = setting.session
+_session = setting.get_session()
 
 
 @dataclass(frozen=True)
@@ -29,6 +29,10 @@ class Article:
         return [(key, value) for key, value in vars(self).items()]
 
     def save_article(self, save_path='.'):
+        """
+        保存微信文章
+        :param save_path: 保存路径
+        """
         html_text = _get_html(self.url)
         if html_text:
             html_tree = document_fromstring(html_text)
@@ -43,8 +47,8 @@ class Article:
                 file.write(text)
 
     def get_html(self):
+        """获取文章html"""
         return _get_html(self.url)
-
 
 
 @dataclass(frozen=True)
@@ -65,9 +69,14 @@ class Official:
 
     @classmethod
     def from_url(cls, url):
+        """
+        通过微信公众号链接实例 Official对象
+        :param url: 链接
+        :return: Official对象/None
+        """
         domain_name = 'http://mp.weixin.qq.com'
         html_text = _get_html(url)
-        if not html_text: return None
+        if not html_text: return None  # 验证码/代理失败
         html_tree = document_fromstring(html_text)
         official_id = _extract(html_tree, '/html/body/div/div[1]/div[1]/div[1]/div/p', True)[5:]
         name = _extract(html_tree, '/html/body/div/div[1]/div[1]/div[1]/div/strong', True)
@@ -113,6 +122,11 @@ class Official:
 
 
 def _get_html(url):
+    """
+    获取页面
+    :param url: 链接
+    :return: html文本/None
+    """
     if setting.get_proxy:
         for _ in range(setting.repeat_times):
             proxies = setting.get_proxy()
@@ -127,19 +141,29 @@ def _get_html(url):
     else:
         resp = _session.get(url)
         if '请输入验证码' in resp.text: return _get_html(url) if _identify_captcha() else None
-        elif '系统出错' in resp.text or '链接已过期' in resp.text:
+        elif any([t in resp.text for t in ['系统出错', '链接已过期', '该内容已被发布者删除', '此内容因违规无法查看']]):
             setting.wechat_link_error_callback(url)
             return None
         else: return str(resp.content, 'utf-8')
 
 
 def _extract(node, xpath, is_text=False):
+    """
+    安全提取关键信息
+    :param node: [lxml.element] html节点
+    :param xpath: [str] xpath规则
+    :param is_text: 是否获取节点文本
+    """
     result = node.xpath(xpath)
     result = result[0] if result else None
     return None if result is None else result.text_content().strip() if is_text else result
 
 
 def _identify_captcha():
+    """
+    验证码识别
+    :return: True/False
+    """
     for _ in range(setting.repeat_times):
         cert = randint(100000, 999999)
         resp = _session.get(f'http://mp.weixin.qq.com/mp/verifycode?cert={cert}')
