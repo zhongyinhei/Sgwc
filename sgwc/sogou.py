@@ -1,15 +1,15 @@
-from urllib.parse import quote
-from lxml.html import document_fromstring
-from .utils import extract
 from .config import sogou_session, sougo_captcha_callback
-from .article import Article
-from .official import Official
+from requests.utils import add_dict_to_cookiejar
+from lxml.html import document_fromstring
 from time import localtime, strftime
-import logging
+from urllib.parse import quote
+from .official import Official
+from .article import Article
+from .utils import extract
 from json import loads
 from re import search
 from time import time
-from requests.utils import add_dict_to_cookiejar
+import logging
 
 
 def search_articles(keyword, start=1, pages=1):
@@ -129,6 +129,7 @@ def _identify_captcha():
         resp = sogou_session.get(f'http://weixin.sogou.com/antispider/util/seccode.php?tc={int(time())}')
         code = sougo_captcha_callback(resp.content)
         if not code or not isinstance(code, str):
+            logging.warning("Sogou 验证码错误!")
             continue
         code = code.strip().lower()
         if code == 'exit':
