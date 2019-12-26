@@ -1,25 +1,27 @@
 from .config import wechat_session, wechat_captcha_callback
+from lxml.html import document_fromstring
 from random import randint
+from .utils import extract
 import logging
 
 
-# todo: 节点判断
-def _get_html(url):
+def get_html(url):
     resp = wechat_session.get(url)
     resp.raise_for_status()
 
-    if '请输入验证码' not in resp.text:
-        _identify_captcha()
-        return _get_html(url)
+    html_node = document_fromstring(resp.text)
+    if html_node.xpath('//div[@class="page_verify"]'):
+        identify_captcha()
+        return get_html(url)
 
-    for error_text in ['系统出错', '链接已过期', '该内容已被发布者删除', '此内容因违规无法查看']:
-        if error_text in resp.text:
-            raise Exception("WeChat url error!")
+    error_node = html_node.xpath('//h2[@class="weui-msg__title"]')
+    if error_node:
+        raise Exception(f"WeChat url error: {extract(error_node[0], '.', True)}")
 
     return str(resp.content, 'utf-8')
 
 
-def _identify_captcha():
+def identify_captcha():
     while True:
         cert = randint(100000, 999999)
         resp = wechat_session.get(f'http://mp.weixin.qq.com/mp/verifycode?cert={cert}')

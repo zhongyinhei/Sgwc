@@ -1,34 +1,34 @@
 from requests.structures import CaseInsensitiveDict
+from tempfile import TemporaryFile
 from requests import Session
-import logging
+from PIL import Image
 
 
-def _sougo_captcha_callback(data):
+def _sogou_captcha_callback(data):
     """Sougo识别验证码回调函数"""
-    pass
+    tf = TemporaryFile()
+    tf.write(data)
+    Image.open(tf).show()
+    return input('请输入 Sougo 验证码 (输入 exit 退出): ')
 
 
 def _wechat_captcha_callback(data):
     """WeChat识别验证码回调函数"""
-    pass
+    tf = TemporaryFile()
+    tf.write(data)
+    Image.open(tf).show()
+    return input('请输入 WeChat 验证码 (输入 exit 退出): ')
 
 
-def _wechat_link_failure_callback(url):
-    """WeChat链接失效回调函数"""
-    logging.warning(f"Link failure: {url}.")
-
-
-sougo_captcha_callback = _sougo_captcha_callback
+sogou_captcha_callback = _sogou_captcha_callback
 wechat_captcha_callback = _wechat_captcha_callback
-wechat_link_error_callback = _wechat_link_failure_callback
-log_file_path = ''
 
 
 # requests.structures.CaseInsensitiveDict
 _default_headers = CaseInsensitiveDict({
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                   'Chrome/66.0.3359.181 Safari/537.36 ',
-    'Accept-Encoding': ', '.join(('gzip', 'deflate')),
+    'Accept-Encoding': 'gzip, deflate',
     'Accept': '*/*',
     'Connection': 'keep-alive',
 })

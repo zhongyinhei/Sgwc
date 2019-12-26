@@ -1,6 +1,5 @@
-from .config import sougo_captcha_callback, wechat_captcha_callback, wechat_link_error_callback, log_file_path
+from .config import sogou_captcha_callback, wechat_captcha_callback, sogou_session, wechat_session
 from .sogou import search_articles, search_officials, get_official, get_hot_articles
-from .config import sogou_session, wechat_session
 from .official import Official
 from .article import Article
 import importlib
