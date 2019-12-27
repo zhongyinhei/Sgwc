@@ -1,7 +1,6 @@
 from .config import sogou_captcha_callback, wechat_captcha_callback, sogou_session, wechat_session
 from .sogou import search_articles, search_officials, get_official, get_hot_articles
-from .official import Official
-from .article import Article
+from .wechat import Article, Official
 import importlib
 import logging
 

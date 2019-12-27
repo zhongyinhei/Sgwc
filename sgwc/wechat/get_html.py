@@ -1,7 +1,7 @@
-from .config import wechat_session, wechat_captcha_callback
+from sgwc.config import wechat_session, wechat_captcha_callback
 from lxml.html import document_fromstring
+from sgwc.extract import extract
 from random import randint
-from .utils import extract
 import logging
 
 
