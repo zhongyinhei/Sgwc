@@ -7,11 +7,13 @@ from urllib.parse import quote
 from json import loads
 from re import search
 import logging
+from sgwc.config import sogou_session
 
 
 def search_articles(keyword, page=1):
     search_url = f'https://weixin.sogou.com/weixin?type=2&query={quote(keyword)}&page={page}'
     logging.info('Search article: ' + search_url)
+    sogou_session.headers.update({'Referer': search_url})
     html_text = get_html(search_url)
     article_nodes = document_fromstring(html_text).xpath('//*[@class="news-list"]/li')
     return [Article(**{
